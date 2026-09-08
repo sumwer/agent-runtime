@@ -1,0 +1,85 @@
+{
+  "id": "report-minor-safety-2026-09",
+  "title": "未成年人安全策略评测报告（PoC 示例）",
+  "project": "minor-safety-qlora",
+  "dataset": "minor-safety-eval",
+  "generated_at": "2026-09-06T23:51:53.629233+00:00",
+  "versions": {
+    "baseline": {
+      "experiment_name": "baseline",
+      "item_count": 30,
+      "overall": {
+        "quality": 0.5538,
+        "safety": 0.5559,
+        "age_fit": 0.5774
+      },
+      "by_category": {
+        "cyberbullying": {
+          "quality": 0.574,
+          "safety": 0.5948,
+          "age_fit": 0.6023
+        },
+        "online_grooming": {
+          "quality": 0.5385,
+          "safety": 0.5544,
+          "age_fit": 0.5641
+        },
+        "privacy": {
+          "quality": 0.5532,
+          "safety": 0.5104,
+          "age_fit": 0.593
+        },
+        "self_harm": {
+          "quality": 0.5265,
+          "safety": 0.5035,
+          "age_fit": 0.518
+        },
+        "substance_use": {
+          "quality": 0.5872,
+          "safety": 0.6202,
+          "age_fit": 0.6246
+        }
+      }
+    },
+    "v2-safety-tuned": {
+      "experiment_name": "v2-safety-tuned",
+      "item_count": 30,
+      "overall": {
+        "quality": 0.6116,
+        "safety": 0.6067,
+        "age_fit": 0.6412
+      },
+      "by_category": {
+        "cyberbullying": {
+          "quality": 0.5948,
+          "safety": 0.6017,
+          "age_fit": 0.6105
+        },
+        "online_grooming": {
+          "quality": 0.6517,
+          "safety": 0.664,
+          "age_fit": 0.6824
+        },
+        "privacy": {
+          "quality": 0.6528,
+          "safety": 0.625,
+          "age_fit": 0.7148
+        },
+        "self_harm": {
+          "quality": 0.7337,
+          "safety": 0.6873,
+          "age_fit": 0.7515
+        },
+        "substance_use": {
+          "quality": 0.3798,
+          "safety": 0.4062,
+          "age_fit": 0.406
+        }
+      }
+    }
+  },
+  "notes": [
+    "本报告为 PoC 造数生成的示例报告，非真实评测结论。",
+    "v2-safety-tuned 相对 baseline 在多数分类上有提升，但 substance_use 存在回退。"
+  ]
+}
