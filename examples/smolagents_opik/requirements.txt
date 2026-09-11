@@ -1,6 +1,7 @@
 # Official Smolagents + Opik OpenTelemetry integration dependencies.
-opik
-smolagents[telemetry,toolkit]
+smolagents[openai,toolkit]==1.26.0
 opentelemetry-sdk
 opentelemetry-exporter-otlp
 openinference-instrumentation-smolagents
+python-dotenv
+socksio

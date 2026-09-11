@@ -1,5 +1,26 @@
 # Smolagents → OpenTelemetry → Opik
 
+## 已在本机执行
+
+真实执行和 Opik 入库检查结果见 [观测报告](OBSERVATIONS.md)。模型使用现有 DeepSeek 凭据，
+销售数字为合成测试数据；LLM 调用、代码执行和 trace 入库均为真实运行。
+
+在仓库根目录运行（先按下方步骤安装依赖）：
+
+```bash
+.venv-smolagents-opik/bin/python -m examples.smolagents_opik.local_run
+.venv-smolagents-opik/bin/python -m examples.smolagents_opik.local_run --fail-once
+.venv-smolagents-opik/bin/python -m examples.smolagents_opik.local_run --fail-once --allow-json
+.venv-smolagents-opik/bin/python -m examples.smolagents_opik.observe
+```
+
+`local_run` 从根目录 `.env` 读取现有 DeepSeek 凭据，通过其 OpenAI 兼容端点调用
+`deepseek-chat`，向 `http://localhost:5173/api/v1/private/otel` 导出。
+它适用于当前无鉴权的本地 Opik 实例。代码在 Smolagents 本地解释器运行，未部署为常驻服务，
+也没有使用主项目的 Docker 沙箱；仅用于此合成数据演示。
+每次运行会消耗模型额度。模型输出不确定，故障后的恢复步骤可能不同。
+依赖显式安装 OpenInference，避免 telemetry extra 引入无关 Phoenix 服务。
+
 这是一个独立、可运行的可观测性示例：一次 `CodeAgent.run()` 创建一条 trace；模型调用、
 Web 搜索及每轮 Agent 决策会作为关联 span 导出到 Opik。它不依赖本仓库的 FastAPI 服务或
 `opik_adapter`，后者继续只负责读取已有 Opik 数据供分析。
