@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>评测集分析 · Atlas</title><link rel="stylesheet" href="/workbench/style.css"></head>
+<body>
+<aside class="sidebar">
+  <a class="brand" href="/workbench/" aria-label="Atlas 首页"><span class="brand-icon">a</span> atlas<span class="brand-dot">.</span></a>
+  <div class="workspace">WORKSPACE <span>LOCAL</span></div>
+  <button id="new-analysis" class="nav-active">◈ <span>评测集分析</span><span>＋</span></button>
+  <div class="section-label">最近分析 <button id="refresh-history" class="icon-button" aria-label="刷新历史">↻</button></div>
+  <div id="history" class="history" aria-live="polite"></div>
+  <div class="sidebar-bottom"><span class="avatar">分</span><div>分布专家<small>Dataset intelligence</small></div><button id="settings" class="icon-button" aria-label="连接设置">⚙</button></div>
+</aside>
+<div class="shell">
+  <header><div class="breadcrumb">工作空间 <span>/</span> 评测集分析</div><div class="connection"><i id="connection-dot"></i><span id="connection-label">正在连接 Opik</span></div></header>
+  <main id="main"></main>
+  <footer>ATLAS / AGENT RUNTIME <span>以数据为依据，让每一次评测更可信。</span></footer>
+</div>
+<div id="notice" role="status" hidden></div>
+<dialog id="connection-dialog"><form id="connection-form"><h2>连接设置</h2><p>工作台与分析服务使用同一地址。服务启用鉴权时，请填写 API token。</p><label>API token<input id="api-token" type="password" autocomplete="off" placeholder="未启用鉴权可留空"></label><p class="hint">仅保存在当前标签页的会话中。</p><div class="actions"><button type="button" id="close-settings" class="secondary">取消</button><button class="primary">保存并连接</button></div></form></dialog>
+<script src="/workbench/app.js" defer></script>
+</body></html>
