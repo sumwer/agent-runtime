@@ -1,0 +1,6 @@
+# Official Smolagents + Opik OpenTelemetry integration dependencies.
+opik
+smolagents[telemetry,toolkit]
+opentelemetry-sdk
+opentelemetry-exporter-otlp
+openinference-instrumentation-smolagents

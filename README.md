@@ -75,6 +75,13 @@ metrics（必含非负整数 sample_count，所有数值有限）、charts、cav
 数据源是真实的 Opik：自托管的 `opik-local`（REST 为 `http://localhost:5173/api`），
 经适配层 `opik_adapter/` 以 MCP 对外提供。
 
+### Smolagents 观测示例
+
+`examples/smolagents_opik/` 是与生产运行时隔离的参考实现：Smolagents 通过
+OpenTelemetry 将 agent、LLM 和工具调用的 trace/span 导出到 Opik。运行与检查方法见
+[示例说明](examples/smolagents_opik/README.md)；它产生的数据可再由本项目的 `opik_adapter`
+读取并交给分析 Skill。
+
 先启动本地 Opik（独立 compose 工程，前端绑定 5173；后端与数据服务在 `opik` profile 下）：
 
 ```bash

@@ -1,4 +1,5 @@
 .env
+.env.smolagents-opik
 .venv/
 __pycache__/
 *.pyc
@@ -6,4 +7,5 @@ outputs/
 data/cache/
 .pytest_cache/
 .venv-runtime/
+.venv-smolagents-opik/
 artifacts/
