@@ -26,10 +26,12 @@ def test_reject_chart_escape(chart):
 
 
 def test_load_references():
-    assert len(scan_skills(settings.SKILLS_DIR)) == 3
+    assert len(scan_skills(settings.SKILLS_DIR)) == 4
     assert 'fig.savefig' in load_skill_body('badcase-analysis', settings.SKILLS_DIR)
     agent_metrics = load_skill_body('agent-metrics', settings.SKILLS_DIR)
     assert 'fig.savefig' in agent_metrics and 'threads.jsonl' in agent_metrics
+    dataset = load_skill_body('dataset-distribution', settings.SKILLS_DIR)
+    assert 'dataset_items' in dataset and 'dataset_distribution.png' in dataset
 
 
 def test_validation_retry_limit():

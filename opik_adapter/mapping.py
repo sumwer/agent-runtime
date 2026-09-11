@@ -70,6 +70,36 @@ def experiment_summary(experiment: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def dataset_summary(dataset: dict[str, Any]) -> dict[str, Any]:
+    latest = dataset.get('latest_version') if isinstance(dataset.get('latest_version'), dict) else {}
+    return {
+        'id': dataset.get('id'),
+        'name': dataset.get('name'),
+        'item_count': dataset.get('dataset_items_count'),
+        'experiment_count': dataset.get('experiment_count'),
+        'version': latest.get('version_name') or latest.get('version_hash'),
+        'tags': dataset.get('tags') or latest.get('tags') or [],
+        'created_at': str(dataset.get('created_at')) if dataset.get('created_at') else None,
+    }
+
+
+def dataset_item_row(item: dict[str, Any]) -> dict[str, Any]:
+    """Preserve raw input/metadata/expected output for pre-evaluation distribution analysis."""
+    data = item.get('data') if isinstance(item.get('data'), dict) else {}
+    return {
+        'id': item.get('id'),
+        'dataset_item_id': item.get('dataset_item_id') or item.get('id'),
+        'dataset_id': item.get('dataset_id'),
+        'source': item.get('source'),
+        'input': data.get('input'),
+        'expected_output': data.get('expected_output'),
+        'metadata': data.get('metadata'),
+        'tags': item.get('tags') or [],
+        'description': item.get('description'),
+        'created_at': str(item.get('created_at')) if item.get('created_at') else None,
+    }
+
+
 def item_row(dataset_item: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
     scores = numeric_scores(item)
     name, value = pick_score(scores)

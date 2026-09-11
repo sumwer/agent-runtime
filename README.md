@@ -68,6 +68,7 @@ metrics（必含非负整数 sample_count，所有数值有限）、charts、cav
 - skills/badcase-analysis：低分分组、代表 trace、归因建议、柱状图。
 - skills/score-distribution：分位数、低分占比、直方图。
 - skills/agent-metrics：多轮决策整体指标（轮次与收敛、工具成功率与循环、延迟与 token 成本、异常会话）。
+- skills/dataset-distribution：在评测前检查待测集的标签覆盖、长度、缺失、重复与潜在的类别偏斜。
 
 每个 Skill 包含 SKILL.md 和 reference/*.py；运行时加载完整方法论和参考脚本，
 模型按数据结构改写代码。新增 Skill 放入目录后，下一个任务即可发现。
@@ -126,10 +127,28 @@ trace 至少含 id、数值 score；score 行含 trace_id、score。
 | get_scores | 同上 | trace_id、score、name |
 | get_threads | GET /v1/private/traces/threads | id、number_of_messages、duration、status、usage、total_estimated_cost、scores、created_at |
 | get_spans | GET /v1/private/spans | id、trace_id、parent_span_id、name、type（llm/tool）、model、provider、prompt/completion/total_tokens、duration、ttft、total_estimated_cost、error、start_time |
+| list_datasets | GET /v1/private/datasets | id、name、item_count、experiment_count、version、tags、created_at |
+| get_dataset_items | GET /v1/private/datasets/{id}/items?version=latest | id、input、expected_output、metadata、tags、source |
 
 `traces`/`scores` 属于实验级，必须给 `experiment_id`，支持 min_score/max_score；
 `threads`/`spans` 属于项目级（项目由 `OPIK_PROJECT_NAME` 决定），不接 experiment_id 与分数过滤。
-`export_data` 因此允许 `experiment_id` 省略：`export_data(source="threads")`。
+`dataset_items` 属于待测数据集级，必须给 `dataset_id`，不接分数过滤；它可以在创建 experiment
+之前读取。`export_data` 因此允许 `experiment_id` 省略：`export_data(source="threads")`，
+或 `export_data(source="dataset_items", dataset_id="...")`。
+
+### 评测前数据集审查
+
+提交分析任务时，在 task 中给出 Opik dataset 的 id 或名称，并要求使用 `dataset-distribution`。
+Agent 会先读取少量样本确认字段，再把全量 dataset items 写入任务工作目录，交由 Docker 沙箱
+分析；原始题目和参考答案不会整体放进模型上下文。例如：
+
+```text
+使用 dataset-distribution Skill 审查 Opik 数据集 <dataset-id>，判断它是否适合评估
+未成年人安全回答 Agent。检查类别与年龄段覆盖、题目重复、参考答案缺失及潜在评测偏差。
+```
+
+本地 Opik 的当前版本读取数据项需传 `version=latest`，适配层已处理该差异。若数据超过
+`MAX_EXPORT_ROWS`，结果会标记截断，Skill 不能据此作全量结论。
 
 experiment_id 可按 id 或名称解析；只支持有关联数据集的实验（需要 dataset_id）。
 适配层按实验缓存条目（上限 OPIK_MAX_ITEMS）后切片分页，page 从 1 开始，page_size ≤ 100。

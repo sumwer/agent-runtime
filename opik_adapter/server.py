@@ -83,6 +83,45 @@ async def _list_experiments() -> list[dict]:
     return experiments[:cap]
 
 
+async def _list_datasets() -> list[dict]:
+    datasets: list[dict] = []
+    cap = config.max_experiments()
+    page = 1
+    while len(datasets) < cap:
+        content, total = await client.list_datasets(page=page, size=client.PAGE_SIZE)
+        if not content:
+            break
+        datasets.extend(mapping.dataset_summary(item) for item in content)
+        if page * client.PAGE_SIZE >= total:
+            break
+        page += 1
+    return datasets[:cap]
+
+
+async def _dataset_rows(dataset_id: str) -> list[dict]:
+    key = f'dataset:{dataset_id}'
+    if key in _CACHE:
+        return _CACHE[key]
+    async with _LOCK:
+        if key in _CACHE:
+            return _CACHE[key]
+        dataset = await client.find_dataset(dataset_id)
+        resolved = dataset.get('id') or str(dataset_id)
+        rows: list[dict] = []
+        cap = config.max_items()
+        page = 1
+        while len(rows) < cap:
+            content, total = await client.dataset_item_page(resolved, page, client.PAGE_SIZE)
+            if not content:
+                break
+            rows.extend(mapping.dataset_item_row(item) for item in content)
+            if page * client.PAGE_SIZE >= total:
+                break
+            page += 1
+        _CACHE[key] = rows[:cap]
+        return _CACHE[key]
+
+
 async def _get_traces(experiment_id: str, page: int = 1, page_size: int = 50,
                       min_score: float | None = None, max_score: float | None = None) -> dict:
     rows = [row for row in await _rows(experiment_id) if mapping.keep(row, min_score, max_score)]
@@ -93,6 +132,10 @@ async def _get_scores(experiment_id: str, page: int = 1, page_size: int = 50) ->
     rows = [{'trace_id': row['trace_id'], 'score': row['score'], 'name': row['score_name']}
             for row in await _rows(experiment_id)]
     return mapping.paginate(rows, page, page_size)
+
+
+async def _get_dataset_items(dataset_id: str, page: int = 1, page_size: int = 50) -> dict:
+    return mapping.paginate(await _dataset_rows(dataset_id), page, page_size)
 
 
 async def _collect(kind: str, fetch) -> list[dict]:
@@ -138,6 +181,18 @@ async def _get_spans(page: int = 1, page_size: int = 50) -> dict:
 async def list_experiments() -> list[dict]:
     """List evaluation experiments with dataset, trace count and average scores."""
     return await _list_experiments()
+
+
+@mcp.tool()
+async def list_datasets() -> list[dict]:
+    """List accessible datasets before evaluation: id, name, item count, version and tags."""
+    return await _list_datasets()
+
+
+@mcp.tool()
+async def get_dataset_items(dataset_id: str, page: int = 1, page_size: int = 50) -> dict:
+    """Page raw items from the latest dataset version: input, metadata, expected output and tags."""
+    return await _get_dataset_items(dataset_id, page, page_size)
 
 
 @mcp.tool()

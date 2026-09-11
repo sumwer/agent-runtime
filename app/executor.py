@@ -75,13 +75,27 @@ def make_discovery_tools(cfg, event_cb):
             return (await call_json(session, 'list_experiments', {}, event_cb))[:20]
 
     @tool
+    async def list_datasets() -> list:
+        """Discover evaluation datasets before choosing one for distribution analysis."""
+        async with open_session(cfg) as session:
+            return (await call_json(session, 'list_datasets', {}, event_cb))[:20]
+
+    @tool
+    async def sample_dataset_items(dataset_id: str) -> dict:
+        """Read three raw dataset items to inspect the field schema before bulk export."""
+        async with open_session(cfg) as session:
+            payload = await call_json(session, 'get_dataset_items',
+                {'dataset_id': dataset_id, 'page': 1, 'page_size': 3}, event_cb)
+            return {'total': payload['total'], 'items': payload['items'][:3]}
+
+    @tool
     async def sample_traces(experiment_id: str) -> dict:
         """Read three sample traces to understand the schema. Use export_data for bulk data."""
         async with open_session(cfg) as session:
             payload = await call_json(session, 'get_traces',
                 {'experiment_id': experiment_id, 'page': 1, 'page_size': 3}, event_cb)
             return {'total': payload['total'], 'items': payload['items'][:3]}
-    return [list_experiments, sample_traces]
+    return [list_experiments, sample_traces, list_datasets, sample_dataset_items]
 
 
 def build_graph(model, tools, collector, prompt, event_cb):
@@ -102,7 +116,8 @@ def build_graph(model, tools, collector, prompt, event_cb):
                 result = {'error': f'Unknown tool: {name}'}
             else:
                 try:
-                    if name not in {'list_skills', 'read_skill', 'list_experiments', 'sample_traces', 'submit_result'}:
+                    if name not in {'list_skills', 'read_skill', 'list_experiments', 'sample_traces',
+                                    'list_datasets', 'sample_dataset_items', 'submit_result'}:
                         if collector.loaded is not None and not collector.loaded:
                             raise ValueError('read_skill must be called first')
                     result = await by_name[name].ainvoke(call['args'])

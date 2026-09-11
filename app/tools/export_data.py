@@ -9,20 +9,23 @@ from app.tools.mcp import call_json, open_session
 
 EXPERIMENT_SOURCES = {'traces', 'scores'}
 PROJECT_SOURCES = {'threads', 'spans'}
+DATASET_SOURCES = {'dataset_items'}
 
 
 async def export_data_impl(mcp_cfg, source, experiment_id, workspace, max_rows=5000,
-                           filters=None, event_cb=None):
-    if source not in EXPERIMENT_SOURCES | PROJECT_SOURCES:
-        raise ValueError(f'source must be one of {sorted(EXPERIMENT_SOURCES | PROJECT_SOURCES)}')
+                           filters=None, event_cb=None, dataset_id=''):
+    if source not in EXPERIMENT_SOURCES | PROJECT_SOURCES | DATASET_SOURCES:
+        raise ValueError(f'source must be one of {sorted(EXPERIMENT_SOURCES | PROJECT_SOURCES | DATASET_SOURCES)}')
     if source in EXPERIMENT_SOURCES and not experiment_id:
         raise ValueError(f'experiment_id is required for source={source}')
+    if source in DATASET_SOURCES and not dataset_id:
+        raise ValueError(f'dataset_id is required for source={source}')
     if not 1 <= max_rows <= settings.MAX_EXPORT_ROWS:
         raise ValueError(f'max_rows must be between 1 and {settings.MAX_EXPORT_ROWS}')
     filters = filters or {}
     if set(filters) - {'max_score', 'min_score'}:
         raise ValueError('Unsupported filter')
-    if source in PROJECT_SOURCES and any(value is not None for value in filters.values()):
+    if source in PROJECT_SOURCES | DATASET_SOURCES and any(value is not None for value in filters.values()):
         raise ValueError('min_score/max_score only apply to traces and scores')
     workspace = Path(workspace).resolve()
     workspace.mkdir(parents=True, exist_ok=True)
@@ -50,6 +53,8 @@ async def export_data_impl(mcp_cfg, source, experiment_id, workspace, max_rows=5
                     args = dict(page=page, page_size=100, **server_filters)
                     if source in EXPERIMENT_SOURCES:
                         args['experiment_id'] = experiment_id
+                    elif source in DATASET_SOURCES:
+                        args['dataset_id'] = dataset_id
                     payload = await call_json(session, f'get_{source}', args, event_cb)
                     items = payload['items']
                     total = int(payload['total'])
@@ -88,16 +93,16 @@ async def export_data_impl(mcp_cfg, source, experiment_id, workspace, max_rows=5
 
 def make_export_tool(workspace, mcp_cfg, event_cb=None, exports=None):
     @tool
-    async def export_data(source: str, experiment_id: str = '', max_rows: int = 5000,
+    async def export_data(source: str, experiment_id: str = '', dataset_id: str = '', max_rows: int = 5000,
                           max_score: float | None = None, min_score: float | None = None) -> dict:
-        """Export traces/scores (need experiment_id) or threads/spans (project-wide, no
-        experiment_id) directly to workspace JSONL, without sending data to the model.
+        """Export dataset_items (need dataset_id), traces/scores (need experiment_id), or
+        threads/spans (project-wide) directly to workspace JSONL, without sending data to the model.
         threads are multi-turn sessions, spans are LLM/tool decision steps.
         max_rows limits output. Scores use inclusive min_score/max_score filters.
         Report truncated data in the result caveats. Returned file is relative to /workspace.
         """
         result = await export_data_impl(mcp_cfg, source, experiment_id, workspace, max_rows,
-                                       {'max_score': max_score, 'min_score': min_score}, event_cb)
+                                       {'max_score': max_score, 'min_score': min_score}, event_cb, dataset_id)
         if exports is not None:
             exports[source] = result
         return result

@@ -60,6 +60,34 @@ async def list_experiments(page: int = 1, size: int = PAGE_SIZE,
     return _content(data, '/v1/private/experiments')
 
 
+async def list_datasets(page: int = 1, size: int = PAGE_SIZE,
+                        transport=None) -> tuple[list[dict[str, Any]], int]:
+    """List accessible evaluation datasets. Dataset selection happens by id or name upstream."""
+    data = await get_json('/v1/private/datasets', {'page': page, 'size': size}, transport=transport)
+    return _content(data, '/v1/private/datasets')
+
+
+async def find_dataset(dataset_id: str, transport=None) -> dict[str, Any]:
+    wanted = str(dataset_id)
+    for page in range(1, config.max_experiments() // PAGE_SIZE + 2):
+        datasets, total = await list_datasets(page=page, size=PAGE_SIZE, transport=transport)
+        for dataset in datasets:
+            if dataset.get('id') == wanted or dataset.get('name') == wanted:
+                return dataset
+        if len(datasets) < PAGE_SIZE or page * PAGE_SIZE >= total:
+            break
+    raise OpikError(f'Dataset {wanted!r} not found')
+
+
+async def dataset_item_page(dataset_id: str, page: int, size: int,
+                            transport=None) -> tuple[list[dict[str, Any]], int]:
+    """Read the latest dataset version. The local Opik release requires version=latest."""
+    path = f'/v1/private/datasets/{dataset_id}/items'
+    data = await get_json(path, {'page': page, 'size': size, 'version': 'latest', 'truncate': 'true'},
+                          transport=transport)
+    return _content(data, path)
+
+
 async def find_experiment(experiment_id: str, transport=None) -> dict[str, Any]:
     """按 id 或名称解析实验，返回实验对象（含 dataset_id）。"""
     wanted = str(experiment_id)

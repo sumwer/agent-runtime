@@ -41,7 +41,7 @@ def test_api_and_artifact_containment(engine):
         assert response.status_code == 202
         aid = response.json()['analysis_id']
         assert client.get(f'/analyses/{aid}').json()['status'] == 'queued'
-        assert len(client.get('/skills').json()) == 3
+        assert len(client.get('/skills').json()) == 4
         assert client.get('/analyses/not-a-uuid').status_code == 422
         assert client.get('/analyses?limit=-1').status_code == 422
         base = settings.ARTIFACTS_DIR / aid

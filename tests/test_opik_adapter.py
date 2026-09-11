@@ -43,6 +43,18 @@ ITEM_PAGE = {
     'total': 2,
 }
 
+DATASET = {'id': 'ds-1', 'name': 'minor-safety', 'dataset_items_count': 2,
+           'experiment_count': 1, 'latest_version': {'version_name': 'v1', 'tags': ['eval']}}
+
+DATASET_PAGE = {'content': [
+    {'id': 'di-1', 'dataset_item_id': 'di-1', 'dataset_id': 'ds-1', 'source': 'sdk',
+     'data': {'input': {'question': 'q1'}, 'expected_output': {'answer': 'a1'},
+              'metadata': {'category': 'violence'}}, 'tags': ['safety']},
+    {'id': 'di-2', 'dataset_item_id': 'di-2', 'dataset_id': 'ds-1', 'source': 'sdk',
+     'data': {'input': {'question': 'q2'}, 'expected_output': {'answer': 'a2'},
+              'metadata': {'category': 'self_harm'}}, 'tags': []},
+], 'total': 2}
+
 
 THREADS = {
     'content': [
@@ -94,8 +106,18 @@ def fake_opik(monkeypatch):
         calls.append(('page', dataset_id, experiment_id, page, size))
         return (ITEM_PAGE['content'], ITEM_PAGE['total']) if page == 1 else ([], ITEM_PAGE['total'])
 
+    async def find_dataset(dataset_id, transport=None):
+        calls.append(('dataset', dataset_id))
+        return DATASET
+
+    async def dataset_item_page(dataset_id, page, size, transport=None):
+        calls.append(('dataset_page', dataset_id, page, size))
+        return (DATASET_PAGE['content'], DATASET_PAGE['total']) if page == 1 else ([], DATASET_PAGE['total'])
+
     monkeypatch.setattr(client, 'find_experiment', find_experiment)
     monkeypatch.setattr(client, 'experiment_item_page', experiment_item_page)
+    monkeypatch.setattr(client, 'find_dataset', find_dataset)
+    monkeypatch.setattr(client, 'dataset_item_page', dataset_item_page)
     return calls
 
 
@@ -179,6 +201,25 @@ async def test_list_experiments(monkeypatch):
     assert experiments[0]['name'] == 'safety-baseline'
 
 
+async def test_get_dataset_items_preserves_pre_evaluation_fields(fake_opik):
+    page = await adapter._get_dataset_items('minor-safety', page=1, page_size=1)
+    assert page['total'] == 2
+    row = page['items'][0]
+    assert row['input'] == {'question': 'q1'}
+    assert row['expected_output'] == {'answer': 'a1'}
+    assert row['metadata']['category'] == 'violence'
+    assert ('dataset_page', 'ds-1', 1, 100) in fake_opik
+
+
+async def test_list_datasets(monkeypatch):
+    async def list_datasets(page=1, size=100, transport=None):
+        return ([DATASET], 1) if page == 1 else ([], 1)
+    monkeypatch.setattr(client, 'list_datasets', list_datasets)
+    datasets = await adapter._list_datasets()
+    assert datasets == [{'id': 'ds-1', 'name': 'minor-safety', 'item_count': 2,
+                         'experiment_count': 1, 'version': 'v1', 'tags': ['eval'], 'created_at': None}]
+
+
 class _FakeOpikHandler(BaseHTTPRequestHandler):
     """最小 Opik REST 桩：只回答实验列表和实验条目分页。"""
 
@@ -200,6 +241,10 @@ class _FakeOpikHandler(BaseHTTPRequestHandler):
             self._send({'content': [EXPERIMENT], 'total': 1} if page == 1 else {'content': [], 'total': 1})
         elif parsed.path.endswith('/items/experiments/items'):
             self._send(ITEM_PAGE if page == 1 else {'content': [], 'total': ITEM_PAGE['total']})
+        elif parsed.path == '/api/v1/private/datasets':
+            self._send({'content': [DATASET], 'total': 1} if page == 1 else {'content': [], 'total': 1})
+        elif parsed.path.endswith('/items'):
+            self._send(DATASET_PAGE if page == 1 else {'content': [], 'total': DATASET_PAGE['total']})
         elif parsed.path == '/api/v1/private/traces/threads':
             self._send(THREADS if page == 1 else {'content': [], 'total': THREADS['total']})
         elif parsed.path == '/api/v1/private/spans':
@@ -221,6 +266,7 @@ async def test_export_against_fake_opik(tmp_path, monkeypatch):
         scores = await export_data_impl(cfg, 'scores', 'exp-1', tmp_path, filters={'max_score': 0.5})
         threads = await export_data_impl(cfg, 'threads', '', tmp_path)
         spans = await export_data_impl(cfg, 'spans', '', tmp_path)
+        items = await export_data_impl(cfg, 'dataset_items', '', tmp_path, dataset_id='ds-1')
     finally:
         http.shutdown()
     assert traces['written'] == 2 and not traces['truncated']
@@ -228,6 +274,7 @@ async def test_export_against_fake_opik(tmp_path, monkeypatch):
     assert {row['trace_id'] for row in rows} == {'tr-1', 'tr-2'}
     assert scores['written'] == 1 and set(scores['schema_hint']) == {'trace_id', 'score', 'name'}
     assert threads['written'] == 2 and spans['written'] == 2
+    assert items['written'] == 2
     thread_rows = [json.loads(line) for line in (tmp_path / 'threads.jsonl').read_text().splitlines()]
     assert thread_rows[0]['number_of_messages'] == 6
     span_rows = [json.loads(line) for line in (tmp_path / 'spans.jsonl').read_text().splitlines()]
@@ -265,6 +312,8 @@ async def test_export_rejects_bad_source_combinations(tmp_path):
 
     with pytest.raises(ValueError, match='experiment_id is required'):
         await export_data_impl({}, 'traces', '', tmp_path)
+    with pytest.raises(ValueError, match='dataset_id is required'):
+        await export_data_impl({}, 'dataset_items', '', tmp_path)
     with pytest.raises(ValueError, match='only apply to traces and scores'):
         await export_data_impl({}, 'threads', '', tmp_path, filters={'max_score': 0.5})
     with pytest.raises(ValueError, match='source must be one of'):
@@ -292,7 +341,7 @@ async def test_stdio_schema_matches_exporter():
            'cwd': str(ROOT), 'env': dict(os.environ)}
     async with open_session(cfg) as session:
         definitions = {tool.name: tool for tool in (await session.list_tools()).tools}
-    assert {'list_experiments', 'get_traces', 'get_scores', 'get_threads', 'get_spans'} <= definitions.keys()
-    for name in {'get_traces', 'get_scores', 'get_threads', 'get_spans'}:
+    assert {'list_experiments', 'list_datasets', 'get_dataset_items', 'get_traces', 'get_scores', 'get_threads', 'get_spans'} <= definitions.keys()
+    for name in {'get_dataset_items', 'get_traces', 'get_scores', 'get_threads', 'get_spans'}:
         properties = definitions[name].inputSchema.get('properties', {})
         assert {'page', 'page_size'} <= properties.keys()
