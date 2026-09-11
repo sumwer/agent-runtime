@@ -1,0 +1,17 @@
+[Unit]
+Description=Agent Runtime Worker %i
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=agent-runtime
+WorkingDirectory=/opt/agent-runtime
+EnvironmentFile=/opt/agent-runtime/.env
+ExecStart=/opt/agent-runtime/.venv-runtime/bin/python -m app.executor
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

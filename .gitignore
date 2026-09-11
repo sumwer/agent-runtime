@@ -5,3 +5,5 @@ __pycache__/
 outputs/
 data/cache/
 .pytest_cache/
+.venv-runtime/
+artifacts/

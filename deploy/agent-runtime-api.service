@@ -1,0 +1,16 @@
+[Unit]
+Description=Agent Runtime API
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=agent-runtime
+WorkingDirectory=/opt/agent-runtime
+EnvironmentFile=/opt/agent-runtime/.env
+ExecStart=/opt/agent-runtime/.venv-runtime/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
